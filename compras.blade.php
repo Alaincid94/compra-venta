@@ -14,11 +14,16 @@
                         <button type="button" name="add" id="add_data" class="btn btn-success btn-sm">Registrar Compra/Aportación</button>
                     </div>
                     <br />
+                    <div class="dt-buttons btn-group flex-wrap">
+                    <button class="btn btn-secondary buttons-excel" tabindex="0" aria-controls="compras_table" type="button">
+                        <span>Exportar a Excel</span>
+                    </button>
+                    </div>
                     <table id="compras_table" class="table table-striped table-bordered dataTable" style="width:100%">
                         <thead>
                             <tr style="background-color: white;">
                                 <th>Usuario</th>
-                                <th>Proveedor</th>
+                                <th>Proveedor/Cliente</th>
                                 <th>Fecha</th>
                                 <th>Compra/Aportación</th>
                                 <th>No. de OC/A</th>
@@ -55,8 +60,15 @@
                                         </select>
                                     </div>
                                     <div class="form-group">
-                                        <label>Proveedor</label>
+                                        <label>Proveedor/Cliente</label>
                                         <input type="text" name="proveedor" id="proveedor" class="form-control"/>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="operacion">Operación:</label>
+                                        <select class="form-control" id="operacion">
+                                            <option value="deposito">Depósito</option>
+                                            <option value="retiro">Retiro</option>
+                                        </select>
                                     </div>
                                     <div class="form-group">
                                         <label>Fecha</label>
@@ -82,13 +94,13 @@
                                         <label>PDF Pago</label>
                                         <input type="file" name="pdf_pago" id="pdf_pago" class="form-control" />
                                     </div>
-                                    <div class="form-group">
-                                        <label>Retiro</label>
-                                        <input type="number" step="0.001" name="retiro" id="retiro" class="form-control"/>
+                                    <div class="form-group" id="divRetiro" style="display:none;">
+                                        <label for="retiro">Retiro:</label>
+                                        <input step="0.001" type="number" name="retiro" id="retiro" class="form-control">
                                     </div>
-                                    <div class="form-group">
-                                        <label>Deposito</label>
-                                        <input readonly step="0.001" type="number" name="deposito" id="deposito" value="0" class="form-control"/>
+                                    <div class="form-group" id="divDeposito">
+                                        <label for="deposito">Depósito:</label>
+                                        <input step="0.001" type="number" name="deposito" id="deposito" class="form-control">
                                     </div>
                                     <div class="form-group">
                                         <label>Saldo</label>
@@ -115,6 +127,10 @@
 $(document).ready(function() {
     function updateBalance(table) {
         let saldo = 0;
+        const lastRow = $('#compras_table').DataTable().row(':last');
+        if (lastRow && lastRow.data() && lastRow.data().saldo) {
+            saldo = parseFloat(lastRow.data().saldo);
+        }
 
         table.rows().every(function () {
             const rowData = this.data();
@@ -125,16 +141,29 @@ $(document).ready(function() {
             this.invalidate(); // Invalida la fila para que se redibuje
         });
 
+        // Busca el último registro y actualiza el saldo solo si la tabla tiene al menos una fila
+        if (table.rows().count() > 0) {
+            const lastRowData = table.row(table.rows().count() - 1).data();
+            const lastRowSaldo = parseFloat(lastRowData.saldo) || 0;
+            saldo = lastRowSaldo;
+        }
+
+        if (saldo === 0) {
+            saldo = saldoCompras || 0;
+        }
+
+        $('#saldo_box').html('<p>Saldo actual: ' + saldo.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' }) + '</p>');
+
         table.draw(); // Redibuja la tabla
     }
 
     const comprasTable = $('#compras_table').DataTable({
-    initComplete: function() {
-      var api = this.api();
-      var info = api.page.info();
-      
-      api.page(info.pages - 1).draw(false);
-    },
+        initComplete: function() {
+            var api = this.api();
+            var info = api.page.info();
+
+            api.page(info.pages - 1).draw(false);
+        },
         "processing": true,
         "ordering": false,
         "ajax": "{{ route('compras.getdata') }}",
@@ -152,23 +181,36 @@ $(document).ready(function() {
             { "data": "pdf_orden" },
             { "data": "pdf_pago" },
             { "data": "action", orderable:false, searchable: false, className: "accionesTD"}
-
         ],
         "language": idioma_espanol,
         rowReorder: {
             selector: 'td:nth-child(2)'
         },
-        responsive: true
-     });
+        responsive: true,
+        buttons: [
+            {
+                extend: 'excelHtml5',
+                text: 'Exportar a Excel',
+                title: 'Lista de compras',
+                exportOptions: {
+                    columns: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12]
+                }
+            }
+        ]
+    });
 
-// Llama a updateBalance cuando se cambie un valor de retiro o depósito
-comprasTable.on('change', '.retiro input, .deposito input', function () {
+    // Agrega el elemento #saldo_box después de la tabla
+    $('#compras_table').after('<div id="saldo_box" style="border: 1px solid #ddd; padding: 10px; margin-top: 10px;"></div>');
+
+    // Llama a updateBalance cuando se cambie un valor de retiro o depósito
+    comprasTable.on('change', '.retiro input, .deposito input', function () {
         const cell = comprasTable.cell($(this).closest('td'));
         cell.data($(this).val());
         updateBalance(comprasTable);
     });
 
-    updateBalance(comprasTable); // Actualiza el saldo cuando se carga la página
+updateBalance(comprasTable); // Actualiza el saldo cuando se carga la página
+
 
 
 
@@ -332,6 +374,32 @@ var idioma_espanol = {
 
         });
 
+
+        $("#deposito").on("keydown keyup", function(){
+            var deposito = parseFloat($(this).val()).toFixed(2);
+            var nuevoSaldo = parseFloat(saldoCompras) + parseFloat(deposito);
+            $('#saldo').val(nuevoSaldo.toFixed(2));
+        });
+
+
+$('#operacion').on('change', function() {
+  if ($(this).val() == 'retiro') {
+    $('#divDeposito').hide();
+    $('#divRetiro').show();
+    $("#retiro").prop('readonly', false);
+    $("#retiro").val("");
+    $("#deposito").val(0).prop('readonly', true);
+  } else if ($(this).val() == 'deposito') {
+    $('#divRetiro').hide();
+    $('#divDeposito').show();
+    $("#deposito").prop('readonly', false);
+    $("#deposito").val("");
+    $("#retiro").val(0).prop('readonly', true);
+  }
+});
+
+
+console.log($('#saldo').val());
 
 
 
