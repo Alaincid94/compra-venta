@@ -113,7 +113,22 @@
 
 <script type="text/javascript">
 $(document).ready(function() {
-   $('#compras_table').DataTable({
+    function updateBalance(table) {
+        let saldo = 0;
+
+        table.rows().every(function () {
+            const rowData = this.data();
+            const retiro = parseFloat(rowData.retiro) || 0;
+            const deposito = parseFloat(rowData.deposito) || 0;
+            saldo += deposito - retiro;
+            rowData.saldo = saldo.toFixed(2);
+            this.invalidate(); // Invalida la fila para que se redibuje
+        });
+
+        table.draw(); // Redibuja la tabla
+    }
+
+    const comprasTable = $('#compras_table').DataTable({
     initComplete: function() {
       var api = this.api();
       var info = api.page.info();
@@ -146,6 +161,14 @@ $(document).ready(function() {
         responsive: true
      });
 
+// Llama a updateBalance cuando se cambie un valor de retiro o depósito
+comprasTable.on('change', '.retiro input, .deposito input', function () {
+        const cell = comprasTable.cell($(this).closest('td'));
+        cell.data($(this).val());
+        updateBalance(comprasTable);
+    });
+
+    updateBalance(comprasTable); // Actualiza el saldo cuando se carga la página
 
 
 
@@ -313,6 +336,8 @@ var idioma_espanol = {
 
 
 </script>
+
+
 
 @endsection
 
