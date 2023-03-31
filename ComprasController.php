@@ -36,7 +36,9 @@ class ComprasController extends Controller
         $lastCompra = DB::table('compras')->orderBy('created_at', 'desc')->first();
 
 
-        return view('pages/compras', array('userss'=>$userss, 'users'=>$users, 'nombreCliente'=>$nombreCliente, 'useres'=>$useres, 'usuariosGetAll'=>$usuariosGetAll, 'lastCompra'=>$lastCompra));
+        $compras = Compras::all();
+
+        return view('pages/compras', array('compras' => $compras, 'userss'=>$userss, 'users'=>$users, 'nombreCliente'=>$nombreCliente, 'useres'=>$useres, 'usuariosGetAll'=>$usuariosGetAll, 'lastCompra'=>$lastCompra));
     }
 
     function getdata()
@@ -111,6 +113,18 @@ class ComprasController extends Controller
         ->rawColumns(['name', 'proveedor', 'fecha', 'compra_aportacion', 'numero_compra', 'referencia', 'pdf_orden', 'pdf_pago', 'retiro', 'deposito', 'saldo', 'status', 'action'])
         ->make(true);
     }
+
+    
+        public function calculateBalance()
+        {
+            $saldo = 0;
+            $compras = Compras::all();
+            foreach ($compras as $compra) {
+                $saldo += $compra->deposito - $compra->retiro;
+            }
+            return $saldo;
+        }
+    
 
     function postdata(Request $request)
     {
