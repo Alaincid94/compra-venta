@@ -15,10 +15,11 @@
                     </div>
                     <br />
                     <div class="dt-buttons btn-group flex-wrap">
-                    <button class="btn btn-secondary buttons-excel" tabindex="0" aria-controls="compras_table" type="button">
-                        <span>Exportar a Excel</span>
-                    </button>
-                    </div>
+    <button class="btn btn-secondary buttons-excel" tabindex="0" aria-controls="compras_table" type="button">
+        <span>Exportar a Excel</span>
+    </button>
+</div>
+
                     <table id="compras_table" class="table table-striped table-bordered dataTable" style="width:100%">
                         <thead>
                             <tr style="background-color: white;">
@@ -189,14 +190,24 @@ $(document).ready(function() {
         responsive: true,
         buttons: [
             {
-                extend: 'excelHtml5',
-                text: 'Exportar a Excel',
-                title: 'Lista de compras',
-                exportOptions: {
-                    columns: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12]
-                }
-            }
-        ]
+    extend: 'excelHtml5',
+    text: 'Exportar a Excel',
+    title: 'Lista de compras',
+    exportOptions: {
+        columns: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12]
+    },
+    customize: function(xlsx) {
+        var sheet = xlsx.xl.worksheets['sheet1.xml'];
+        $('row c[r^="A"]', sheet).attr('s', '2');
+    },
+    action: function(e, dt, button, config) {
+        var xlsx = button.xlsx;
+        var blob = new Blob([xlsx], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        saveAs(blob, 'filename.xlsx');
+    }
+}
+]
+
     });
 
     // Agrega el elemento #saldo_box después de la tabla
