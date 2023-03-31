@@ -196,14 +196,10 @@ $(document).ready(function() {
     exportOptions: {
         columns: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12]
     },
-    customize: function(xlsx) {
-        var sheet = xlsx.xl.worksheets['sheet1.xml'];
-        $('row c[r^="A"]', sheet).attr('s', '2');
-    },
-    action: function(e, dt, button, config) {
-        var xlsx = button.xlsx;
-        var blob = new Blob([xlsx], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-        saveAs(blob, 'filename.xlsx');
+    filename: function() {
+        var d = new Date();
+        var n = d.getTime();
+        return 'compras_' + n;
     }
 }
 ]
@@ -417,6 +413,7 @@ console.log($('#saldo').val());
 </script>
 
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/1.3.8/FileSaver.min.js"></script>
 
 @endsection
 
